@@ -93,11 +93,12 @@ going on?"
 
 
 ```{r}
-load(url("http://jakebowers.org/Data/ho05.rda"))
-table(ho05$postbomb,useNA="ifany")
-library(dplyr)
-wrkdat <- ho05  %>% filter(postbomb==0)
-sum(wrkdat$hlphrs)
+load(url("http://jakebowers.org/Data/ho05.rda")) # Loading dataset
+table(ho05$postbomb,useNA="ifany") # table of postbomb. #This is deciding to include NA values in the table if there are any.
+install.packages("dplyr") # package was missing
+library(dplyr)#This line is attaching the dplyr package which is a tool to work on data frames
+wrkdat <- ho05  %>% filter(postbomb==0)# THis is to rename the data set to wrkdat.The second part is to filter the 0 answers for those interviewed before the bombing.
+sum(wrkdat$hlphrs)# THis is combo of the groups, clubs, or organizations that people have been involved with in the last 12 months. It is further broken down into the hours committed during the past four weeks. It also includes things done that are unpaid.
 ```
 
 She continues, "And then I have this from a previous meeting where they talked about `codebooks` but I don't think these were the ordinary kind of encrypted communication behind enemy lines."
@@ -136,6 +137,15 @@ She continues, "And then I have this from a previous meeting where they talked a
 
 She asks, "What is the best way to say how civic life was going before the bombings? What is the right answer?"
 
+#Use the variable wrkdat which was already created because it omits those interviewed post-bombing. This will give you an indication of life before the bombings.
+#Create a new variable that omits the post-bomb because we only want to look at pre-bombing civic life.
+Wrkdat1 <- ho05 %>% filter(postbomb==1)
+#Now compare the summaries of both wrkdat and wrkdat1 to get an indication of life before and after the bombings.
+
+sum(wrkdat)
+sum(wrkdat1)
+
+
 Later, after you had worked on this a bit she calls back, "Hey. Thanks so much
 for helping! I just found this code and thought it might be useful. What do you
 think? Can you tell me what this means? Does it help me get the right answer
@@ -145,30 +155,43 @@ anyway? What is the point?  Also, are there any plots that would help me tell
 the right story about this variable?"
 
 ```{r, results='hide'}
-mean(wrkdat$hlphrs,trim=.1,na.rm=TRUE)
+mean(wrkdat$hlphrs,trim=.1,na.rm=TRUE)# This gives you the mean of the people before the bombing and how many hours over the past four weeks that people helped out civically. The answer is 3.327. The na.rm=true gets rid of any na values which may impact your mean too. The number trim point is to cut the bottom 5% and top 5% in order to get rid of outliers. For example, the highest number was 168 and there were a ton of zeros at the front. 
+
 hlp <- unlist(wrkdat %>% dplyr::select(hlphrs) %>% filter(!is.na(hlphrs)))
+install.packages("psych") # package was missing
 library(psych)
-winsor.mean(hlp)
+winsor.mean(hlp) winsor.mean(hlp)# This wont work until you install the robusthd package. Once done this mean is 3.134. The point of running the winsor mean is in order to find a more accurate mean. The winsor mean attempts to filter out outliers from the dataset that would make the mean less accurate
+install.packages("robustHD") # package was missing
 library(robustHD)
-mean(winsorize(hlp))
+mean(winsorize(hlp))# By running the winsorize mean you are able to eliminate the extreme outliers so that we get a more accurate mean. In this case the mean is no longer 3.327 it is now 1.802
+
+#The code you have been given is so that you can find the mean of the number Of hours people gave pre-bombing. You have also been given code so that you can find the winsorized mean. The reason you want to find this is because it gets rid of the outliers in the data which will give you a more accurate reflection of how much time people actually gave. The winsor mean gives you the best answer for what you are looking for than just the regular mean.
+
+#There are so many ways to describe a single variable because you may wish to do different things with them.  For example, you may wish to sometimes have the mean outliers and all because you want to get an overall sense of all of your data.  Similarly, by reducing the outliers you can now reduce the data into a simpler form that gives you what the true average person gave in terms of time rather than what all the people gave collectively.
+
 
 onestepMest <- function(x){
 	## Following http://www.psychology.mcmaster.ca/bennett/boot09/rt2.pdf
-	madn <- mad(x, constant = 1.4826) ## 1/1.4826 = .6745
-	M <-  ( abs(x - median(x)) / madn )  > 1.28
-	U <- sum( x > M)
-	L <- sum( x < M)
-	B <- length(x) - U - L
-	n <- length(x)
-	mux <- (1.28 * madn * (U-L) + B) /(n - L - U)
-	return(mux)
+	madn <- mad(x, constant = 1.4826) ## 1/1.4826 = .6745 #The MAD is a measure of variability of the sample by subtracting the median from each element in the sample by taking the absolute value of each difference. This also is a way of representing the mean by establishing the outliers so that you can get rid of them.
+
+	M <-  ( abs(x - median(x)) / madn )  > 1.28 #The absolute value by subtracting the median from x. It is pretty much the standard deviation to determine outliers.
+	U <- sum( x > M) # The u is the number of outliers that are greater than the standard deviation
+	L <- sum( x < M) # L is the number of outliers in our sample that are less than the absolute value by subtracting the median from x.
+
+	B <- length(x) - U - L #B is the sum of all the remaining non-outliers
+	n <- length(x) # n is the sample size so how large it is. In this case it is 797
+	mux <- (1.28 * madn * (U-L) + B) /(n - L - U) # This is the equation for finding the one step Huber M estimator.
+
+	return(mux) # This function is so that we can run the onestepMest and find the estimated mean of the sample size
+
 }
 
-onestepMest(hlp)
-library(robustbase)
-huberM(hlp)
-fivenum(hlp)
-quantile(hlp,seq(0,1,.1))
+onestepMest(hlp) # Running the function to find the estimated mean of the help hours using the function created above.
+
+library(robustbase)# this is to access the robustbase library
+huberM(hlp)# This helps to find the Huber-M estimator of location with MAD scale. It helps to define the outliers and how they are combined so as to stop the iteration process.It may be used so that you can remove outliers to give a more accurate number and description.
+fivenum(hlp)#These are a Tukey five number summary that included the minumun,lower-hinge,median,upper-hinge, and maximum) In this case the median is one with the maximum being 168.
+quantile(hlp,seq(0,1,.1))# This is so you can look at sample quantiles that correspond to given probabilities. In this case they correspond to a probability of 0 and the largest to a probability of 1. It shows the highest value represented in each percentage quartile. In the results the 50% quartile is 1 which is the same as the fivenum(hlp) which represents the median.
 
 ```
 
